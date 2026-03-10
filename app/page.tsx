@@ -234,7 +234,7 @@ export default function Home() {
     setFormName(sub.name);
     setFormPrice(sub.price.toString());
     setFormBillingCycle(sub.billingCycle);
-    setFormNextRenewal(sub.next_billing_date);
+    setFormNextRenewal(sub.nextRenewal);
   };
 
   const handleDelete = (id: string) => {
