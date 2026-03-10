@@ -280,8 +280,8 @@ export default function Home() {
   };
 
   if (!user) return;
-  const userId = user.id;
-  addSubscription(newSub, user.id).then((created) => {
+  const typedUser = user as { id: string };
+  addSubscription(newSub, typedUser.id).then((created) => {
   if (created) {
     setSubscriptions(prev => [...prev, created]);
   }
