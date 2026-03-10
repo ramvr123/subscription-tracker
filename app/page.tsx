@@ -47,7 +47,6 @@ async function updateSubscription(id: string, updates: Partial<Subscription>) {
     ...(updates.price !== undefined && { price: updates.price }),
     ...(updates.billingCycle !== undefined && { cycle: updates.billingCycle }),
     ...(updates.nextRenewal !== undefined && { next_billing_date: updates.nextRenewal }),
-    ...(updates.logo !== undefined && { logo: updates.logo }),
   };
 
   const { data, error } = await supabase
