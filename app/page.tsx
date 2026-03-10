@@ -233,7 +233,7 @@ export default function Home() {
     setEditing(sub);
     setFormName(sub.name);
     setFormPrice(sub.price.toString());
-    setFormBillingCycle(sub.cycle);
+    setFormBillingCycle(sub.billingCycle);
     setFormNextRenewal(sub.next_billing_date);
   };
 
