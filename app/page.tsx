@@ -2,6 +2,84 @@
 
 import { useEffect, useState } from "react";
 
+import { supabase } from "@/lib/supabaseClient";
+
+import { useUser } from "@/lib/useUser";
+
+async function loadSubscriptions() {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("*");
+
+  if (error) {
+    console.error("Error loading subscriptions:", error);
+    return [];
+  }
+
+  return data;
+}
+
+async function addSubscription(sub: Omit<Subscription, "id">, userId: string) {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .insert({
+      user_id: userId,
+      name: sub.name,
+      price: sub.price,
+      cycle: sub.billingCycle,              // FIXED
+      next_billing_date: sub.nextRenewal,   // FIXED
+      logo: null                            // or sub.logo if you have it
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding subscription:", error);
+    return null;
+  }
+
+  return data;
+}
+
+async function updateSubscription(id: string, updates: Partial<Subscription>) {
+  const mapped = {
+    ...(updates.name !== undefined && { name: updates.name }),
+    ...(updates.price !== undefined && { price: updates.price }),
+    ...(updates.billingCycle !== undefined && { cycle: updates.billingCycle }),
+    ...(updates.nextRenewal !== undefined && { next_billing_date: updates.nextRenewal }),
+    ...(updates.logo !== undefined && { logo: updates.logo }),
+  };
+
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .update(mapped)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating subscription:", error);
+    return null;
+  }
+
+  return data;
+}
+
+async function deleteSubscription(id: string) {
+  const { error } = await supabase
+    .from("subscriptions")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting subscription:", error);
+    return false;
+  }
+
+  return true;
+}
+
+
 type BillingCycle = "monthly" | "yearly";
 
 type Subscription = {
@@ -94,6 +172,9 @@ function isRenewingThisMonth(dateStr: string) {
 }
 
 export default function Home() {
+  // 1. ALWAYS RUN HOOKS FIRST
+  const { user, loading } = useUser();
+
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [editing, setEditing] = useState<Subscription | null>(null);
 
@@ -107,40 +188,39 @@ export default function Home() {
 
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // Load subscriptions + theme
+  // 2. EFFECTS NEXT
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setSubscriptions(JSON.parse(stored));
-      } else {
-        setSubscriptions(initialSubscriptions);
-      }
-    } catch {
-      setSubscriptions(initialSubscriptions);
-    }
+    loadSubscriptions().then((rows) => {
+      setSubscriptions(rows);
+    });
 
     try {
       const storedTheme = localStorage.getItem(THEME_KEY) as "light" | "dark" | null;
       if (storedTheme === "dark" || storedTheme === "light") {
         setTheme(storedTheme);
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, []);
 
-  // Persist subscriptions
   useEffect(() => {
     if (subscriptions.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
     }
   }, [subscriptions]);
 
-  // Persist theme
   useEffect(() => {
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
+
+  // 3. ONLY NOW: CONDITIONAL RETURNS
+  if (loading) return <p>Loading...</p>;
+
+  if (!user) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+    return null;
+  }
 
   const resetForm = () => {
     setFormName("");
@@ -154,15 +234,21 @@ export default function Home() {
     setEditing(sub);
     setFormName(sub.name);
     setFormPrice(sub.price.toString());
-    setFormBillingCycle(sub.billingCycle);
-    setFormNextRenewal(sub.nextRenewal);
+    setFormBillingCycle(sub.cycle);
+    setFormNextRenewal(sub.next_billing_date);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this subscription?")) return;
-    setSubscriptions(prev => prev.filter(s => s.id !== id));
-    if (editing && editing.id === id) resetForm();
-  };
+  if (!confirm("Delete this subscription?")) return;
+
+  deleteSubscription(id).then((success) => {
+    if (success) {
+      setSubscriptions(prev => prev.filter(s => s.id !== id));
+      if (editing && editing.id === id) resetForm();
+    }
+  });
+};
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,30 +259,33 @@ export default function Home() {
     }
 
     if (editing) {
+  updateSubscription(editing.id, {
+    name: formName.trim(),
+    price: priceNum,
+    billingCycle: formBillingCycle,
+    nextRenewal: formNextRenewal
+  }).then((updated) => {
+    if (updated) {
       setSubscriptions(prev =>
-        prev.map(s =>
-          s.id === editing.id
-            ? {
-                ...s,
-                name: formName.trim(),
-                price: priceNum,
-                billingCycle: formBillingCycle,
-                nextRenewal: formNextRenewal
-              }
-            : s
-        )
+        prev.map(s => (s.id === updated.id ? updated : s))
       );
-    } else {
-      const id = formName.trim().toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
-      const newSub: Subscription = {
-        id,
-        name: formName.trim(),
-        price: priceNum,
-        billingCycle: formBillingCycle,
-        nextRenewal: formNextRenewal
-      };
-      setSubscriptions(prev => [...prev, newSub]);
     }
+  });
+
+    } else {
+  const newSub = {
+    name: formName.trim(),
+    price: priceNum,
+    billingCycle: formBillingCycle,
+    nextRenewal: formNextRenewal
+  };
+
+  addSubscription(newSub, user.id).then((created) => {
+  if (created) {
+    setSubscriptions(prev => [...prev, created]);
+  }
+});
+}
 
     resetForm();
   };
@@ -296,6 +385,22 @@ export default function Home() {
   return (
     <main className={`min-h-screen ${mainBg} ${mainText} p-8`}>
       <div className="max-w-6xl mx-auto">
+
+      {/* 🔥 SAFE LOGOUT BUTTON — DOES NOT BREAK ANYTHING */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+            window.location.href = "/login";
+          }}
+          className="px-3 py-1 bg-red-500 text-white rounded"
+        >
+          Logout
+        </button>
+      </div>
+      {/* 🔥 END LOGOUT BUTTON */}
+
+
         <h1 className="text-3xl font-bold mb-6">Subscription Tracker</h1>
 
         {/* Controls Bar */}
@@ -364,12 +469,12 @@ export default function Home() {
 
               <p className="text-sm">
                 <span className="font-semibold">Price:</span>{" "}
-                ${sub.price.toFixed(2)} / {sub.billingCycle}
+                ${sub.price.toFixed(2)} {sub.cycle ? `/${sub.cycle}` : ""}
               </p>
 
               <p className="text-sm mt-1">
                 <span className="font-semibold">Next Renewal:</span>{" "}
-                {formatDate(sub.nextRenewal)}
+                {formatDate(sub.next_billing_date)}
               </p>
 
               <div className="mt-4 flex gap-2">
@@ -456,7 +561,7 @@ export default function Home() {
                     ? "bg-gray-900 border-gray-700 text-gray-100"
                     : "bg-white border-gray-300 text-gray-900"
                 }`}
-                value={formNextRenewal}
+                value={formNextRenewal ?? ""}
                 onChange={e => setFormNextRenewal(e.target.value)}
               />
             </div>
