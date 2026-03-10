@@ -278,6 +278,8 @@ export default function Home() {
     billingCycle: formBillingCycle,
     nextRenewal: formNextRenewal
   };
+  
+  if (!user) return;
 
   addSubscription(newSub, user.id).then((created) => {
   if (created) {
