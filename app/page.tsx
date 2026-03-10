@@ -470,7 +470,7 @@ export default function Home() {
 
               <p className="text-sm">
                 <span className="font-semibold">Price:</span>{" "}
-                ${sub.price.toFixed(2)} {sub.cycle ? `/${sub.cycle}` : ""}
+                ${sub.price.toFixed(2)} {sub.billingCycle ? `/${sub.billingCycle}` : ""}
               </p>
 
               <p className="text-sm mt-1">
