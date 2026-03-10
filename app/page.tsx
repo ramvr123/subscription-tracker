@@ -475,7 +475,7 @@ export default function Home() {
 
               <p className="text-sm mt-1">
                 <span className="font-semibold">Next Renewal:</span>{" "}
-                {formatDate(sub.next_billing_date)}
+                {formatDate(sub.nextRenewal)}
               </p>
 
               <div className="mt-4 flex gap-2">
