@@ -27,7 +27,7 @@ async function addSubscription(sub: Omit<Subscription, "id">, userId: string) {
       name: sub.name,
       price: sub.price,
       cycle: sub.billingCycle,              // FIXED
-      next_billing_date: sub.nextRenewal,   // FIXED
+      next_renewal: sub.nextRenewal,   // FIXED
       logo: null                            // or sub.logo if you have it
     })
     .select()
