@@ -250,46 +250,51 @@ export default function Home() {
 
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const priceNum = parseFloat(formPrice);
-    if (!formName.trim() || isNaN(priceNum) || !formNextRenewal) {
-      alert("Please fill all fields with valid values.");
-      return;
-    }
+  e.preventDefault();
+  const priceNum = parseFloat(formPrice);
 
-    if (editing) {
-  updateSubscription(editing.id, {
-    name: formName.trim(),
-    price: priceNum,
-    billingCycle: formBillingCycle,
-    nextRenewal: formNextRenewal
-  }).then((updated) => {
-    if (updated) {
-      setSubscriptions(prev =>
-        prev.map(s => (s.id === updated.id ? updated : s))
-      );
-    }
-  });
-
-    } else {
-  const newSub = {
-    name: formName.trim(),
-    price: priceNum,
-    billingCycle: formBillingCycle,
-    nextRenewal: formNextRenewal
-  };
-
-  if (!user) return;
-  const typedUser = user as { id: string };
-  addSubscription(newSub, typedUser.id).then((created) => {
-  if (created) {
-    setSubscriptions(prev => [...prev, created]);
+  if (!formName.trim() || isNaN(priceNum) || !formNextRenewal) {
+    alert("Please fill all fields with valid values.");
+    return;
   }
-});
-}
 
-    resetForm();
-  };
+  // ⭐ FIX: convert MM/DD/YYYY → YYYY-MM-DD
+  const formattedDate = new Date(formNextRenewal).toISOString().split("T")[0];
+
+  if (editing) {
+    updateSubscription(editing.id, {
+      name: formName.trim(),
+      price: priceNum,
+      billingCycle: formBillingCycle,
+      nextRenewal: formattedDate   // ⭐ FIXED
+    }).then((updated) => {
+      if (updated) {
+        setSubscriptions(prev =>
+          prev.map(s => (s.id === updated.id ? updated : s))
+        );
+      }
+    });
+
+  } else {
+    const newSub = {
+      name: formName.trim(),
+      price: priceNum,
+      billingCycle: formBillingCycle,
+      nextRenewal: formattedDate   // ⭐ FIXED
+    };
+
+    if (!user) return;
+    const typedUser = user as { id: string };
+
+    addSubscription(newSub, typedUser.id).then((created) => {
+      if (created) {
+        setSubscriptions(prev => [...prev, created]);
+      }
+    });
+  }
+
+  resetForm();
+};
 
   const handleExportCSV = () => {
     if (subscriptions.length === 0) {
