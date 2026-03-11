@@ -43,11 +43,11 @@ async function addSubscription(sub: Omit<Subscription, "id">, userId: string) {
 
 async function updateSubscription(id: string, updates: Partial<Subscription>) {
   const mapped = {
-    ...(updates.name !== undefined && { name: updates.name }),
-    ...(updates.price !== undefined && { price: updates.price }),
-    ...(updates.billingCycle !== undefined && { cycle: updates.billingCycle }),
-    ...(updates.next_renewal !== undefined && { next_billing_date: updates.next_renewal }),
-  };
+  ...(updates.name !== undefined && { name: updates.name }),
+  ...(updates.price !== undefined && { price: updates.price }),
+  ...(updates.billingCycle !== undefined && { billing_cycle: updates.billingCycle }),
+  ...(updates.next_renewal !== undefined && { next_renewal: updates.next_renewal }),
+};
 
   const { data, error } = await supabase
     .from("subscriptions")
