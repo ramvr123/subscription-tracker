@@ -26,7 +26,7 @@ async function addSubscription(sub: Omit<Subscription, "id">, userId: string) {
       user_id: userId,
       name: sub.name,
       price: sub.price,
-      cycle: sub.billingCycle,              // FIXED
+      cycle: sub.cycle,              // FIXED
       next_renewal: sub.next_renewal,   // FIXED
       logo: null                            // or sub.logo if you have it
     })
@@ -45,7 +45,7 @@ async function updateSubscription(id: string, updates: Partial<Subscription>) {
   const mapped = {
   ...(updates.name !== undefined && { name: updates.name }),
   ...(updates.price !== undefined && { price: updates.price }),
-  ...(updates.billingCycle !== undefined && { billing_cycle: updates.billingCycle }),
+  ...(updates.cycle !== undefined && { cycle: updates.cycle }),
   ...(updates.next_renewal !== undefined && { next_renewal: updates.next_renewal }),
 };
 
@@ -85,11 +85,13 @@ type Subscription = {
   id: string;
   name: string;
   price: number;
-  billingCycle: BillingCycle;
-  next_renewal: string; // ISO date string
+  cycle: string;
+  next_renewal: string;
+  logo?: string | null;
+  user_id?: string;
 };
 
-type SortOption = "name" | "price" | "next_renewal" | "billingCycle";
+type SortOption = "name" | "price" | "next_renewal" | "cycle";
 type FilterOption = "all" | "monthly" | "yearly" | "renewingThisMonth";
 
 const STORAGE_KEY = "subscription-tracker-data-v1";
@@ -100,54 +102,54 @@ const initialSubscriptions: Subscription[] = [
     id: "netflix",
     name: "Netflix",
     price: 15.99,
-    billingCycle: "monthly",
+    cycle: "monthly",
     next_renewal: "2025-03-15"
   },
   {
     id: "amazon-prime",
     name: "Amazon Prime",
     price: 8.99,
-    billingCycle: "monthly",
+    cycle: "monthly",
     next_renewal: "2025-03-10"
   },
   {
     id: "chatgpt-plus",
     name: "ChatGPT Plus",
     price: 20,
-    billingCycle: "monthly",
+    cycle: "monthly",
     next_renewal: "2025-03-05"
   },
   {
     id: "chatgpt-g",
     name: "ChatGPT G",
     price: 10,
-    billingCycle: "monthly",
+    cycle: "monthly",
     next_renewal: "2025-03-12"
   },
   {
     id: "m365-family",
     name: "Microsoft 365 Family",
     price: 108,
-    billingCycle: "yearly",
+    cycle: "yearly",
     next_renewal: "2025-11-01"
   },
   {
     id: "mcafee",
     name: "McAfee",
     price: 59.99,
-    billingCycle: "yearly",
+    cycle: "yearly",
     next_renewal: "2025-09-20"
   },
   {
     id: "lenovo-smart-performance",
     name: "Lenovo Smart Performance",
     price: 39.99,
-    billingCycle: "yearly",
+    cycle: "yearly",
     next_renewal: "2025-07-15"
   }
 ];
 
-function toMonthly(price: number, cycle: BillingCycle) {
+function toMonthly(price: number, cycle: string) {
   return cycle === "monthly" ? price : price / 12;
 }
 
@@ -179,7 +181,7 @@ export default function Home() {
 
   const [formName, setFormName] = useState("");
   const [formPrice, setFormPrice] = useState("");
-  const [formBillingCycle, setFormBillingCycle] = useState<BillingCycle>("monthly");
+  const [formCycle, setFormCycle] = useState<string>("monthly");
   const [formNextRenewal, setFormNextRenewal] = useState("");
 
   const [sortBy, setSortBy] = useState<SortOption>("name");
@@ -224,7 +226,7 @@ export default function Home() {
   const resetForm = () => {
     setFormName("");
     setFormPrice("");
-    setFormBillingCycle("monthly");
+    setFormCycle("monthly");
     setFormNextRenewal("");
     setEditing(null);
   };
@@ -233,7 +235,7 @@ export default function Home() {
     setEditing(sub);
     setFormName(sub.name);
     setFormPrice(sub.price.toString());
-    setFormBillingCycle(sub.billingCycle);
+    setFormCycle(sub.cycle);
     setFormNextRenewal(sub.next_renewal);
   };
 
@@ -265,7 +267,7 @@ export default function Home() {
     updateSubscription(editing.id, {
       name: formName.trim(),
       price: priceNum,
-      billingCycle: formBillingCycle,
+      cycle: formCycle,
       next_renewal: formattedDate   // ⭐ FIXED
     }).then((updated) => {
       if (updated) {
@@ -279,7 +281,7 @@ export default function Home() {
     const newSub = {
       name: formName.trim(),
       price: priceNum,
-      billingCycle: formBillingCycle,
+      cycle: formCycle,
       next_renewal: formattedDate   // ⭐ FIXED
     };
 
@@ -306,7 +308,7 @@ export default function Home() {
     const rows = subscriptions.map(s => [
       s.name,
       s.price.toString(),
-      s.billingCycle,
+      s.cycle,
       formatDate(s.next_renewal)
     ]);
 
@@ -341,9 +343,9 @@ export default function Home() {
 
     // Filter
     if (filterBy === "monthly") {
-      list = list.filter(s => s.billingCycle === "monthly");
+      list = list.filter(s => s.cycle === "monthly");
     } else if (filterBy === "yearly") {
-      list = list.filter(s => s.billingCycle === "yearly");
+      list = list.filter(s => s.cycle === "yearly");
     } else if (filterBy === "renewingThisMonth") {
       list = list.filter(s => isRenewingThisMonth(s.next_renewal));
     }
@@ -361,9 +363,9 @@ export default function Home() {
         const db = new Date(b.next_renewal).getTime();
         return da - db;
       }
-      if (sortBy === "billingCycle") {
-        if (a.billingCycle === b.billingCycle) return a.name.localeCompare(b.name);
-        return a.billingCycle === "monthly" ? -1 : 1;
+      if (sortBy === "cycle") {
+        if (a.cycle === b.cycle) return a.name.localeCompare(b.name);
+        return a.cycle === "monthly" ? -1 : 1;
       }
       return 0;
     });
@@ -372,13 +374,13 @@ export default function Home() {
   })();
 
   const totalMonthly = subscriptions.reduce(
-    (sum, s) => sum + toMonthly(s.price, s.billingCycle),
+    (sum, s) => sum + toMonthly(s.price, s.cycle),
     0
   );
   const totalYearly = totalMonthly * 12;
 
   const byProvider = subscriptions.reduce<Record<string, number>>((acc, s) => {
-    const monthly = toMonthly(s.price, s.billingCycle);
+    const monthly = toMonthly(s.price, s.cycle);
     acc[s.name] = (acc[s.name] || 0) + monthly;
     return acc;
   }, {});
@@ -427,7 +429,7 @@ export default function Home() {
               <option value="name">Name (A → Z)</option>
               <option value="price">Price (Low → High)</option>
               <option value="next_renewal">Next Renewal (Soonest → Latest)</option>
-              <option value="billingCycle">Billing Cycle (Monthly → Yearly)</option>
+              <option value="cycle">Billing Cycle (Monthly → Yearly)</option>
             </select>
           </div>
 
@@ -475,7 +477,7 @@ export default function Home() {
 
               <p className="text-sm">
                 <span className="font-semibold">Price:</span>{" "}
-                ${sub.price.toFixed(2)} {sub.billingCycle ? `/${sub.billingCycle}` : ""}
+                ${sub.price.toFixed(2)} {sub.cycle ? `/${sub.cycle}` : ""}
               </p>
 
               <p className="text-sm mt-1">
@@ -550,8 +552,8 @@ export default function Home() {
                     ? "bg-gray-900 border-gray-700 text-gray-100"
                     : "bg-white border-gray-300 text-gray-900"
                 }`}
-                value={formBillingCycle}
-                onChange={e => setFormBillingCycle(e.target.value as BillingCycle)}
+                value={formCycle}
+                onChange={e => setFormCycle(e.target.value as BillingCycle)}
               >
                 <option value="monthly">Monthly</option>
                 <option value="yearly">Yearly</option>
