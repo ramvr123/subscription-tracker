@@ -27,7 +27,7 @@ async function addSubscription(sub: Omit<Subscription, "id">, userId: string) {
       name: sub.name,
       price: sub.price,
       cycle: sub.billingCycle,              // FIXED
-      next_renewal: sub.nextRenewal,   // FIXED
+      next_renewal: sub.next_renewal,   // FIXED
       logo: null                            // or sub.logo if you have it
     })
     .select()
@@ -46,7 +46,7 @@ async function updateSubscription(id: string, updates: Partial<Subscription>) {
     ...(updates.name !== undefined && { name: updates.name }),
     ...(updates.price !== undefined && { price: updates.price }),
     ...(updates.billingCycle !== undefined && { cycle: updates.billingCycle }),
-    ...(updates.nextRenewal !== undefined && { next_billing_date: updates.nextRenewal }),
+    ...(updates.next_renewal !== undefined && { next_billing_date: updates.next_renewal }),
   };
 
   const { data, error } = await supabase
@@ -86,10 +86,10 @@ type Subscription = {
   name: string;
   price: number;
   billingCycle: BillingCycle;
-  nextRenewal: string; // ISO date string
+  next_renewal: string; // ISO date string
 };
 
-type SortOption = "name" | "price" | "nextRenewal" | "billingCycle";
+type SortOption = "name" | "price" | "next_renewal" | "billingCycle";
 type FilterOption = "all" | "monthly" | "yearly" | "renewingThisMonth";
 
 const STORAGE_KEY = "subscription-tracker-data-v1";
@@ -101,49 +101,49 @@ const initialSubscriptions: Subscription[] = [
     name: "Netflix",
     price: 15.99,
     billingCycle: "monthly",
-    nextRenewal: "2025-03-15"
+    next_renewal: "2025-03-15"
   },
   {
     id: "amazon-prime",
     name: "Amazon Prime",
     price: 8.99,
     billingCycle: "monthly",
-    nextRenewal: "2025-03-10"
+    next_renewal: "2025-03-10"
   },
   {
     id: "chatgpt-plus",
     name: "ChatGPT Plus",
     price: 20,
     billingCycle: "monthly",
-    nextRenewal: "2025-03-05"
+    next_renewal: "2025-03-05"
   },
   {
     id: "chatgpt-g",
     name: "ChatGPT G",
     price: 10,
     billingCycle: "monthly",
-    nextRenewal: "2025-03-12"
+    next_renewal: "2025-03-12"
   },
   {
     id: "m365-family",
     name: "Microsoft 365 Family",
     price: 108,
     billingCycle: "yearly",
-    nextRenewal: "2025-11-01"
+    next_renewal: "2025-11-01"
   },
   {
     id: "mcafee",
     name: "McAfee",
     price: 59.99,
     billingCycle: "yearly",
-    nextRenewal: "2025-09-20"
+    next_renewal: "2025-09-20"
   },
   {
     id: "lenovo-smart-performance",
     name: "Lenovo Smart Performance",
     price: 39.99,
     billingCycle: "yearly",
-    nextRenewal: "2025-07-15"
+    next_renewal: "2025-07-15"
   }
 ];
 
@@ -234,7 +234,7 @@ export default function Home() {
     setFormName(sub.name);
     setFormPrice(sub.price.toString());
     setFormBillingCycle(sub.billingCycle);
-    setFormNextRenewal(sub.nextRenewal);
+    setFormNextRenewal(sub.next_renewal);
   };
 
   const handleDelete = (id: string) => {
@@ -266,7 +266,7 @@ export default function Home() {
       name: formName.trim(),
       price: priceNum,
       billingCycle: formBillingCycle,
-      nextRenewal: formattedDate   // ⭐ FIXED
+      next_renewal: formattedDate   // ⭐ FIXED
     }).then((updated) => {
       if (updated) {
         setSubscriptions(prev =>
@@ -280,7 +280,7 @@ export default function Home() {
       name: formName.trim(),
       price: priceNum,
       billingCycle: formBillingCycle,
-      nextRenewal: formattedDate   // ⭐ FIXED
+      next_renewal: formattedDate   // ⭐ FIXED
     };
 
     if (!user) return;
@@ -307,7 +307,7 @@ export default function Home() {
       s.name,
       s.price.toString(),
       s.billingCycle,
-      formatDate(s.nextRenewal)
+      formatDate(s.next_renewal)
     ]);
 
     const csvContent =
@@ -345,7 +345,7 @@ export default function Home() {
     } else if (filterBy === "yearly") {
       list = list.filter(s => s.billingCycle === "yearly");
     } else if (filterBy === "renewingThisMonth") {
-      list = list.filter(s => isRenewingThisMonth(s.nextRenewal));
+      list = list.filter(s => isRenewingThisMonth(s.next_renewal));
     }
 
     // Sort
@@ -356,9 +356,9 @@ export default function Home() {
       if (sortBy === "price") {
         return a.price - b.price;
       }
-      if (sortBy === "nextRenewal") {
-        const da = new Date(a.nextRenewal).getTime();
-        const db = new Date(b.nextRenewal).getTime();
+      if (sortBy === "next_renewal") {
+        const da = new Date(a.next_renewal).getTime();
+        const db = new Date(b.next_renewal).getTime();
         return da - db;
       }
       if (sortBy === "billingCycle") {
@@ -426,7 +426,7 @@ export default function Home() {
             >
               <option value="name">Name (A → Z)</option>
               <option value="price">Price (Low → High)</option>
-              <option value="nextRenewal">Next Renewal (Soonest → Latest)</option>
+              <option value="next_renewal">Next Renewal (Soonest → Latest)</option>
               <option value="billingCycle">Billing Cycle (Monthly → Yearly)</option>
             </select>
           </div>
@@ -480,7 +480,7 @@ export default function Home() {
 
               <p className="text-sm mt-1">
                 <span className="font-semibold">Next Renewal:</span>{" "}
-                {formatDate(sub.nextRenewal)}
+                {formatDate(sub.next_renewal)}
               </p>
 
               <div className="mt-4 flex gap-2">
